@@ -1,0 +1,164 @@
+{
+    "name": "CopyCustomerDataToADLS",
+    "type": "Copy",
+    "inputs": [
+        {
+            "referenceName": "SqlCustomerDataset",
+            "type": "DatasetReference"
+        }
+    ],
+    "outputs": [
+        {
+            "referenceName": "ADLSCustomerData",
+            "type": "DatasetReference"
+        }
+    ],
+    "typeProperties": {
+        "source": {
+            "type": "SqlSource"
+        },
+        "sink": {
+            "type": "JsonSink"
+        }
+    }
+}
+
+//
+{
+    "name": "CompareRecordCount",
+    "type": "IfCondition",
+    "dependsOn": [
+        "LookupThreshold",
+        "GetCustomerRecordCount"
+    ],
+    "typeProperties": {
+        "expression": {
+            "value": "@greaterOrEquals(activity('GetCustomerRecordCount').output.firstRow.Count, int(activity('LookupThreshold').output.firstRow.ThresholdValue))",
+            "type": "Expression"
+        },
+        "ifTrueActivities": [
+            {
+                "name": "CopyCustomerDataToADLS",
+                "type": "Copy",
+                "inputs": [
+                    {
+                        "referenceName": "SqlCustomerDataset",
+                        "type": "DatasetReference"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "referenceName": "ADLSCustomerData",
+                        "type": "DatasetReference"
+                    }
+                ],
+                "typeProperties": {
+                    "source": {
+                        "type": "SqlSource"
+                    },
+                    "sink": {
+                        "type": "JsonSink",
+                        "storeSettings": {
+                            "type": "AzureDataLakeStoreWriteSettings"
+                        },
+                        "formatSettings": {
+                            "type": "JsonWriteSettings"
+                        },
+                        "fileName": {
+                            "value": "@concat('Customer/', formatDateTime(utcnow(), 'yyyy/MM/dd'), '/customer_data.json')",
+                            "type": "Expression"
+                        }
+                    }
+                }
+            }
+        ]
+    }
+}
+
+//
+
+{
+    "name": "Foreach_Example2",
+    "properties": {
+        "activities": [
+            {
+                "name": "CopyProductData",
+                "type": "Copy",
+                "inputs": [
+                    {
+                        "referenceName": "ProductDataset",
+                        "type": "DatasetReference"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "referenceName": "ADLSTargetDataset",
+                        "type": "DatasetReference"
+                    }
+                ]
+            },
+            {
+                "name": "CopyCustomerData",
+                "type": "Copy",
+                "inputs": [
+                    {
+                        "referenceName": "CustomerDataset",
+                        "type": "DatasetReference"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "referenceName": "ADLSTargetDataset",
+                        "type": "DatasetReference"
+                    }
+                ]
+            }
+        ],
+        "annotations": []
+    }
+}
+
+//
+
+{
+    "name": "CopyToADLS",
+    "type": "Copy",
+    "dependsOn": [
+        "SortCustomerData"
+    ],
+    "inputs": [
+        {
+            "referenceName": "SortedCustomerData",
+            "type": "DatasetReference"
+        }
+    ],
+    "outputs": [
+        {
+            "referenceName": "ADLSTargetDataset",
+            "type": "DatasetReference"
+        }
+    ],
+    "typeProperties": {
+        "source": {
+            "type": "DelimitedTextSource",
+            "storeSettings": {
+                "type": "AzureBlobStorageReadSettings"
+            }
+        },
+        "sink": {
+            "type": "ParquetSink",
+            "storeSettings": {
+                "type": "AzureDataLakeStoreWriteSettings"
+            },
+            "formatSettings": {
+                "type": "ParquetWriteSettings"
+            },
+            "fileName": {
+                "value": "@concat('output/customer_data_', formatDateTime(utcnow(), 'yyyyMMddHHmmss'), '.parquet')",
+                "type": "Expression"
+            }
+        }
+    }
+}
+
+
